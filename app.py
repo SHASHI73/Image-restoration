@@ -1,3 +1,30 @@
+import glob
+import os
+
+# ── Patch basicsr before importing gfpgan (works on Windows, Linux, Mac) ──────
+def _patch_basicsr():
+    patterns = [
+        r"C:\Users\**\site-packages\basicsr\data\degradations.py",
+        "/usr/local/lib/python*/dist-packages/basicsr/data/degradations.py",
+        "/opt/conda/lib/python*/site-packages/basicsr/data/degradations.py",
+    ]
+    import site
+    for sp in site.getsitepackages():
+        patterns.append(os.path.join(sp, "basicsr", "data", "degradations.py"))
+
+    for pattern in patterns:
+        for path in glob.glob(pattern, recursive=True):
+            if not os.path.exists(path):
+                continue
+            txt = open(path, encoding="utf-8").read()
+            if "functional_tensor" in txt:
+                open(path, "w", encoding="utf-8").write(txt.replace(
+                    "from torchvision.transforms.functional_tensor import rgb_to_grayscale",
+                    "from torchvision.transforms.functional import rgb_to_grayscale",
+                ))
+
+_patch_basicsr()
+
 import streamlit as st
 import cv2
 import numpy as np
