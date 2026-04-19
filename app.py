@@ -3,6 +3,7 @@
 # or any system with newer torchvision that removed functional_tensor
 import sys
 import types
+import os
 
 if "torchvision.transforms.functional_tensor" not in sys.modules:
     from torchvision.transforms.functional import rgb_to_grayscale as _rgb_to_grayscale
@@ -318,8 +319,13 @@ html, body, [data-testid="stAppViewContainer"] {
 # ── Model loader ───────────────────────────────────────────────────────────────
 @st.cache_resource(show_spinner=False)
 def load_model():
+    import urllib.request
+    model_url  = "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth"
+    model_path = "/tmp/GFPGANv1.3.pth"
+    if not os.path.exists(model_path):
+        urllib.request.urlretrieve(model_url, model_path)
     return GFPGANer(
-        model_path="https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth",
+        model_path=model_path,
         upscale=1,
         arch="clean",
         channel_multiplier=2,
