@@ -1,29 +1,14 @@
-import glob
-import os
+# ── Patch basicsr in-memory ────────────────────────────────────────────────────
+# Injects a fake module so basicsr doesn't crash on Streamlit Cloud (read-only FS)
+# or any system with newer torchvision that removed functional_tensor
+import sys
+import types
 
-# ── Patch basicsr before importing gfpgan (works on Windows, Linux, Mac) ──────
-def _patch_basicsr():
-    patterns = [
-        r"C:\Users\**\site-packages\basicsr\data\degradations.py",
-        "/usr/local/lib/python*/dist-packages/basicsr/data/degradations.py",
-        "/opt/conda/lib/python*/site-packages/basicsr/data/degradations.py",
-    ]
-    import site
-    for sp in site.getsitepackages():
-        patterns.append(os.path.join(sp, "basicsr", "data", "degradations.py"))
-
-    for pattern in patterns:
-        for path in glob.glob(pattern, recursive=True):
-            if not os.path.exists(path):
-                continue
-            txt = open(path, encoding="utf-8").read()
-            if "functional_tensor" in txt:
-                open(path, "w", encoding="utf-8").write(txt.replace(
-                    "from torchvision.transforms.functional_tensor import rgb_to_grayscale",
-                    "from torchvision.transforms.functional import rgb_to_grayscale",
-                ))
-
-_patch_basicsr()
+if "torchvision.transforms.functional_tensor" not in sys.modules:
+    from torchvision.transforms.functional import rgb_to_grayscale as _rgb_to_grayscale
+    _fake = types.ModuleType("torchvision.transforms.functional_tensor")
+    _fake.rgb_to_grayscale = _rgb_to_grayscale
+    sys.modules["torchvision.transforms.functional_tensor"] = _fake
 
 import streamlit as st
 import cv2
@@ -416,7 +401,7 @@ else:
 
     with col_in:
         st.markdown('<div class="panel-label"><span>01</span>Input Image</div>', unsafe_allow_html=True)
-        st.image(input_img, use_column_width=True)
+        st.image(input_img, use_container_width=True)
         st.markdown(f'<div class="metric-delta">{w} × {h} px &nbsp;·&nbsp; {uploaded.size // 1024} KB</div>', unsafe_allow_html=True)
 
     with col_out:
@@ -437,7 +422,7 @@ else:
         restored_img = restore_image(restorer, input_img)
         elapsed = time.time() - t0
 
-    result_placeholder.image(restored_img, use_column_width=True)
+    result_placeholder.image(restored_img, use_container_width=True)
 
     rw, rh = restored_img.size
 
